@@ -1,9 +1,8 @@
 const MAX_LEN = 1900
 const OWNER_ID = "874994122237280266"
-const TOKEN = process.env.DISCORD_BOT_TOKEN
+let TOKEN = null
 const API = "https://discord.com/api/v10"
 const INTENTS = 1 << 0 | 1 << 12 | 1 << 15
-const MODEL = { providerID: "opencode", modelID: "big-pickle" }
 const AGENT = "openn-02"
 
 let discordChannelId = null
@@ -271,7 +270,7 @@ function connect() {
 
             await opencodeClient.session.prompt({
               path: { id: sessionId },
-              body: { agent: AGENT, model: MODEL, parts: [{ type: "text", text: msg.content }] },
+              body: { agent: AGENT, parts: [{ type: "text", text: msg.content }] },
             })
           } catch (err) {
             await sendToDiscord(`Error: ${err?.message ?? String(err)}`)
@@ -294,7 +293,23 @@ function connect() {
 async function plugin(input) {
   console.log("[discord] Plugin loaded")
   opencodeClient = input?.client ?? null
+
+  TOKEN = process.env.DISCORD_BOT_TOKEN
+  if (!TOKEN) {
+    try {
+      const { readFileSync } = await import("fs")
+      const { join } = await import("path")
+      const { fileURLToPath } = await import("url")
+      const dir = fileURLToPath(new URL(".", import.meta.url))
+      const envPath = join(dir, "..", "..", ".env")
+      const content = readFileSync(envPath, "utf-8")
+      const match = content.match(/^DISCORD_BOT_TOKEN=(.+)$/m)
+      if (match) TOKEN = match[1].trim()
+    } catch {}
+  }
+
   if (!opencodeClient) console.error("[discord] No client in plugin input")
+  if (!TOKEN) console.error("[discord] No bot token found. Set DISCORD_BOT_TOKEN env var or create .env file")
   connect()
   return {
     "event": async ({ event }) => {
