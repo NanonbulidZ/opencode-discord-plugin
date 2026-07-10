@@ -1,0 +1,8 @@
+# Discord bot token
+.env
+.env.local
+*.env
+
+# opencode cache
+.opencode/node_modules/
+.opencode/bun.lock
