@@ -273,15 +273,20 @@ function connect() {
               body: { agent: AGENT, parts: [{ type: "text", text: msg.content }] },
             })
 
-            const resultParts = Array.isArray(result?.parts) ? result.parts
-              : Array.isArray(result?.data?.parts) ? result.data.parts
-              : Array.isArray(result?.info?.parts) ? result.info.parts
-              : null
+            let resultParts = null
+            if (Array.isArray(result?.data?.parts)) {
+              resultParts = result.data.parts
+            } else if (Array.isArray(result?.parts)) {
+              resultParts = result.parts
+            } else if (Array.isArray(result?.info?.parts)) {
+              resultParts = result.info.parts
+            }
 
             if (resultParts) {
               for (const part of resultParts) {
                 if (part.type === "text" && part.text && !sentPartIds.has(part.id)) {
                   sentPartIds.add(part.id)
+                  if (part.text.trim() === msg.content.trim()) continue
                   await sendToDiscord(part.text)
                 }
               }
