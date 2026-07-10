@@ -312,15 +312,16 @@ async function plugin(input) {
   if (!TOKEN) console.error("[discord] No bot token found. Set DISCORD_BOT_TOKEN env var or create .env file")
   connect()
   return {
-    "event": async ({ event }) => {
+    "chat.message": async (input, output) => {
       if (!discordChannelId || !sessionId) return
-      if (event.type !== "message.part.updated") return
-      const { part } = event.properties
-      if (!part || part.type !== "text" || !part.text) return
-      if (part.sessionID !== sessionId) return
-      if (sentPartIds.has(part.id)) return
-      sentPartIds.add(part.id)
-      await sendToDiscord(part.text)
+      if (input.sessionID !== sessionId) return
+      if (output.message.role !== "assistant") return
+      for (const part of output.parts) {
+        if (part.type === "text" && part.text && !sentPartIds.has(part.id)) {
+          sentPartIds.add(part.id)
+          await sendToDiscord(part.text)
+        }
+      }
     },
     "tool.execute.before": async (input) => {
       if (!discordChannelId || !input || input.sessionID !== sessionId) return
