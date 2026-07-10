@@ -268,10 +268,24 @@ function connect() {
 
             await sendTyping()
 
-            await opencodeClient.session.prompt({
+            const result = await opencodeClient.session.prompt({
               path: { id: sessionId },
               body: { agent: AGENT, parts: [{ type: "text", text: msg.content }] },
             })
+
+            const resultParts = Array.isArray(result?.parts) ? result.parts
+              : Array.isArray(result?.data?.parts) ? result.data.parts
+              : Array.isArray(result?.info?.parts) ? result.info.parts
+              : null
+
+            if (resultParts) {
+              for (const part of resultParts) {
+                if (part.type === "text" && part.text && !sentPartIds.has(part.id)) {
+                  sentPartIds.add(part.id)
+                  await sendToDiscord(part.text)
+                }
+              }
+            }
           } catch (err) {
             await sendToDiscord(`Error: ${err?.message ?? String(err)}`)
           }
@@ -312,17 +326,6 @@ async function plugin(input) {
   if (!TOKEN) console.error("[discord] No bot token found. Set DISCORD_BOT_TOKEN env var or create .env file")
   connect()
   return {
-    "chat.message": async (input, output) => {
-      if (!discordChannelId || !sessionId) return
-      if (input.sessionID !== sessionId) return
-      if (output.message.role !== "assistant") return
-      for (const part of output.parts) {
-        if (part.type === "text" && part.text && !sentPartIds.has(part.id)) {
-          sentPartIds.add(part.id)
-          await sendToDiscord(part.text)
-        }
-      }
-    },
     "tool.execute.before": async (input) => {
       if (!discordChannelId || !input || input.sessionID !== sessionId) return
       const toolName = input.tool ?? "unknown"
